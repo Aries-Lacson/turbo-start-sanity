@@ -64,20 +64,42 @@ export async function POST(request: NextRequest) {
     });
 
     const blog = await publishedClient.fetch(
-      `*[_id == $id && _type == "blog" &&
-         defined(slug.current) && seoHideFromLists != true][0]{
-        "objectID": _id,
-        title,
-        description,
-        "slug": slug.current,
-        category,
-        publishedAt,
-        "author": authors[0]->name,
-        "content": pt::text(richText)
-      }`,
-      { id },
-      { cache: "no-store" }
-    );
+  `*[_id == $id && _type == "blog" &&
+     defined(slug.current) && seoHideFromLists != true][0]{
+    "objectID": _id,
+    _id,
+    _type,
+    title,
+    description,
+    "slug": slug.current,
+    orderRank,
+    category,
+    publishedAt,
+    image {
+      "id": asset._ref,
+      "preview": asset->metadata.lqip,
+      "alt": coalesce(alt, asset->altText, caption, asset->originalFilename, "untitled"),
+      hotspot { x, y },
+      crop { bottom, left, right, top }
+    },
+    authors[0]->{
+      _id,
+      name,
+      position,
+      image {
+        "id": asset._ref,
+        "preview": asset->metadata.lqip,
+        "alt": coalesce(alt, asset->altText, caption, asset->originalFilename, "untitled"),
+        hotspot { x, y },
+        crop { bottom, left, right, top }
+      }
+    },
+    "author": authors[0]->name,
+    "content": pt::text(richText)
+  }`,
+  { id },
+  { cache: "no-store" }
+);
 
     logTiming("Sanity fetched", { id, found: Boolean(blog) });
 

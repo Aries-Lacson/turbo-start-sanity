@@ -25,11 +25,33 @@ const sanity = createClient({
 const blogs = await sanity.fetch(`
   *[_type == "blog" && defined(slug.current) && seoHideFromLists != true]{
     "objectID": _id,
+    _id,
+    _type,
     title,
     description,
     "slug": slug.current,
+    orderRank,
     category,
     publishedAt,
+    image {
+      "id": asset._ref,
+      "preview": asset->metadata.lqip,
+      "alt": coalesce(alt, asset->altText, caption, asset->originalFilename, "untitled"),
+      hotspot { x, y },
+      crop { bottom, left, right, top }
+    },
+    authors[0]->{
+      _id,
+      name,
+      position,
+      image {
+        "id": asset._ref,
+        "preview": asset->metadata.lqip,
+        "alt": coalesce(alt, asset->altText, caption, asset->originalFilename, "untitled"),
+        hotspot { x, y },
+        crop { bottom, left, right, top }
+      }
+    },
     "author": authors[0]->name,
     "content": pt::text(richText)
   }
@@ -52,12 +74,13 @@ const { taskID } = await algolia.setSettings({
   },
 });
 
-await algolia.waitForTask({ indexName, taskID });
+console.log("Settings queued:", taskID);
 
-await algolia.saveObjects({
-  indexName: process.env.ALGOLIA_INDEX_NAME,
+const result = await algolia.saveObjects({
+  indexName,
   objects: blogs,
-  waitForTasks: true,
+  waitForTasks: false,
 });
 
-console.log(`Indexed ${blogs.length} published blogs`);
+console.log(`Queued ${blogs.length} published blogs`);
+console.log("Record task result:", result);
