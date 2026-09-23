@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   if (perspective === "published") {
     const appId = env.ALGOLIA_APPLICATION_ID;
     const indexName = env.ALGOLIA_INDEX_NAME;
-    const apiKey = env.ALGOLIA_WRITE_API_KEY;
+    const apiKey = env.ALGOLIA_SEARCH_API_KEY;
 
     if (!appId || !indexName || !apiKey) {
       return NextResponse.json(

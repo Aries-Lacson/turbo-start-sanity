@@ -22,6 +22,7 @@ const env = createEnv({
     ALGOLIA_WRITE_API_KEY: z.string().min(1).optional(),
     ALGOLIA_INDEX_NAME: z.string().min(1).optional(),
     SANITY_ALGOLIA_WEBHOOK_SECRET: z.string().min(1).optional(),
+    ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
   },
 
   experimental__runtimeEnv: {
