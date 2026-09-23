@@ -55,14 +55,22 @@ export async function POST(request: NextRequest) {
         "author": authors[0]->name,
         "content": pt::text(richText)
       }`,
-      { id }
+      { id },
+      { cache: "no-store" }
     );
 
     const algolia = algoliasearch(appId, writeKey);
 
     if (blog) {
-      await algolia.saveObject({ indexName, body: blog });
-      return Response.json({ action: "saved", id });
+      const { taskID } = await algolia.saveObject({
+        indexName,
+        body: blog,
+      });
+      await algolia.waitForTask({ indexName, taskID });
+
+      console.info("Algolia indexing completed", {id: taskID});
+
+      return Response.json({ action: "saved", id, taskID});
     }
 
     await algolia.deleteObject({ indexName, objectID: id });
