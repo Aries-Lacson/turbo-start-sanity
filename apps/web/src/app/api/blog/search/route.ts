@@ -6,6 +6,8 @@ import {
 import { queryAllBlogDataForSearch } from "@workspace/sanity/query";
 import Fuse from "fuse.js";
 import { NextResponse } from "next/server";
+import { algoliasearch } from "algoliasearch";
+import { env } from "@workspace/env/server";
 
 async function getSearchableBlogs(
   perspective: DynamicFetchOptions["perspective"]
@@ -32,6 +34,36 @@ export async function GET(request: Request) {
 
   if (!data) {
     return NextResponse.json({ error: "No data found" }, { status: 404 });
+  }
+
+  if (perspective === "published") {
+    const appId = env.ALGOLIA_APPLICATION_ID;
+    const indexName = env.ALGOLIA_INDEX_NAME;
+    const apiKey = env.ALGOLIA_WRITE_API_KEY;
+
+    if (!appId || !indexName || !apiKey) {
+      return NextResponse.json(
+        { error: "Search is not configured" },
+        { status: 503 }
+      );
+    }
+
+    const algolia = algoliasearch(appId, apiKey);
+    const { hits } = await algolia.searchSingleIndex({
+      indexName,
+      searchParams: {
+        query: query.trim(),
+        hitsPerPage: 10,
+      },
+    });
+
+    const blogsById = new Map(data.map((blog) => [blog._id, blog]));
+
+    return NextResponse.json(
+      hits
+        .map((hit) => blogsById.get(hit.objectID))
+        .filter((blog) => blog !== undefined)
+    );
   }
 
   const fuse = new Fuse(data, {
