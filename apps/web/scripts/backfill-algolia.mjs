@@ -42,6 +42,18 @@ const algolia = algoliasearch(
   process.env.ALGOLIA_WRITE_API_KEY
 );
 
+const indexName = process.env.ALGOLIA_INDEX_NAME;
+
+const { taskID } = await algolia.setSettings({
+  indexName,
+  indexSettings: {
+    searchableAttributes: ["title", "description", "content", "author"],
+    attributesForFaceting: ["category"],
+  },
+});
+
+await algolia.waitForTask({ indexName, taskID });
+
 await algolia.saveObjects({
   indexName: process.env.ALGOLIA_INDEX_NAME,
   objects: blogs,
