@@ -1,25 +1,39 @@
 "use client";
 
 import { cn } from "@workspace/tailwind-config/utils";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { SearchInput } from "@/components/blog-search";
 import { BlogSearchResults } from "@/components/blog-search-results";
 import { useBlogSearch } from "@/hooks/use-blog-search";
+import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 
 type BlogSearchLayoutProps = {
+  activeCategory: string;
   categoryFilter: ReactNode;
   featured: ReactNode;
   list: ReactNode;
 };
 
 export function BlogSearchLayout({
+  activeCategory,
   categoryFilter,
   featured,
   list,
 }: Readonly<BlogSearchLayoutProps>) {
+  const [searchCategory, setSearchCategory] = useState(activeCategory);
+
+  useEffect(() => {
+    setSearchCategory(activeCategory);
+  }, [activeCategory]);
+
   const { searchQuery, setSearchQuery, results, isSearching, hasQuery, error } =
-    useBlogSearch();
+    useBlogSearch(searchCategory);
+
+  function clearSearch() {
+    setSearchQuery("");
+    setSearchCategory(activeCategory);
+  }
 
   const isDeadEnd =
     hasQuery && !isSearching && (Boolean(error) || results.length === 0);
@@ -55,11 +69,36 @@ export function BlogSearchLayout({
             <SearchInput
               className="max-w-none"
               onChange={setSearchQuery}
-              onClear={() => setSearchQuery("")}
+              onClear={clearSearch}
               placeholder="Search…"
               value={searchQuery}
             />
-            {categoryFilter}
+
+            {hasQuery ? (
+              <nav
+                aria-label="Filter search results by category"
+                className="grid gap-2"
+              >
+                {BLOG_CATEGORIES.map(({ label, value }) => (
+                  <button
+                    key={value || "all"}
+                    type="button"
+                    aria-pressed={searchCategory === value}
+                    onClick={() => setSearchCategory(value)}
+                    className={cn(
+                      "focus-ring w-max px-1 py-px text-left font-mono text-sm uppercase",
+                      searchCategory === value
+                        ? "bg-accent-green text-accent-green-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            ) : (
+              categoryFilter
+            )}
           </div>
         </aside>
 
@@ -70,12 +109,13 @@ export function BlogSearchLayout({
           )}
         >
           <output className="sr-only">{searchStatus}</output>
+
           {hasQuery ? (
             <BlogSearchResults
               error={error}
               hasQuery={hasQuery}
               isSearching={isSearching}
-              onClear={() => setSearchQuery("")}
+              onClear={clearSearch}
               results={results}
               searchQuery={searchQuery}
             />
