@@ -8,7 +8,7 @@ import { SanityImage } from "@workspace/sanity-blocks/internal/sanity-image";
 import { cn } from "@workspace/tailwind-config/utils";
 import { Button } from "@workspace/ui/components/button";
 import { LoaderCircle } from "lucide-react";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
 
 export interface NewsletterTestimonial {
@@ -29,18 +29,22 @@ export interface SubscribeNewsletterProps {
   title?: string | null;
 }
 
-function SubscribeNewsletterButton() {
+function SubscribeNewsletterButton({
+  isSubmitting,
+}: Readonly<{ isSubmitting: boolean }>) {
   const { pending } = useFormStatus();
+  const busy = pending || isSubmitting;
+
   return (
     <Button
-      aria-label={pending ? "Subscribing..." : "Subscribe to newsletter"}
+      aria-label={busy ? "Subscribing..." : "Subscribe to newsletter"}
       className="shrink-0 rounded-none px-5 py-2.5"
-      disabled={pending}
+      disabled={busy}
       size="sm"
       type="submit"
       variant="secondary"
     >
-      {pending ? (
+      {busy ? (
         <LoaderCircle
           aria-hidden="true"
           className="animate-spin"
@@ -51,7 +55,7 @@ function SubscribeNewsletterButton() {
         "Subscribe"
       )}
       <span aria-live="polite" className="sr-only" role="status">
-        {pending ? "Subscribing…" : ""}
+        {busy ? "Subscribing…" : ""}
       </span>
     </Button>
   );
@@ -61,6 +65,7 @@ function TestimonialPanel({
   testimonial,
 }: Readonly<{ testimonial: NewsletterTestimonial }>) {
   const { eyebrow, quote, authorImage, authorName, authorRole } = testimonial;
+
   return (
     <div className="bleed-x bg-grid-dots p-[var(--container-px,0.5rem)] text-zinc-800 lg:mx-0 lg:p-8 dark:text-zinc-50">
       <div className="flex h-full flex-col gap-12 bg-background p-8">
@@ -110,6 +115,53 @@ export function SubscribeNewsletter({
   onSubmit,
   testimonial,
 }: Readonly<SubscribeNewsletterProps>) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notice, setNotice] = useState<{
+    kind: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const email = String(new FormData(form).get("email") ?? "");
+
+    setIsSubmitting(true);
+    setNotice(null);
+
+    try {
+      const response = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ email }),
+      });
+
+      if (!response.ok) {
+        setNotice({
+          kind: "error",
+          text:
+            response.status === 429
+              ? "Too many attempts. Please try again in a minute."
+              : "Could not subscribe. Please try again.",
+        });
+        return;
+      }
+
+      form.reset();
+      setNotice({ kind: "success", text: "You're subscribed." });
+    } catch {
+      setNotice({
+        kind: "error",
+        text: "Could not subscribe. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   // A cleared Sanity object is still truthy; only treat the testimonial as
   // present when it actually carries content.
   const hasTestimonialContent = Boolean(
@@ -147,12 +199,13 @@ export function SubscribeNewsletter({
                 />
               )}
             </div>
+
             <div className="flex w-full flex-col items-start gap-3">
               <form
-                action={action}
+                action={action ?? "/api/newsletter"}
                 className="flex w-full items-center gap-1.5 bg-muted py-1.5 pr-1.5 pl-4 has-[input:focus-visible]:[outline:2px_dotted_var(--foreground)] has-[input:focus-visible]:outline-offset-2"
                 method={method ?? "post"}
-                onSubmit={onSubmit}
+                onSubmit={onSubmit ?? (action ? undefined : handleSubmit)}
               >
                 <input
                   aria-label="Email address"
@@ -162,8 +215,23 @@ export function SubscribeNewsletter({
                   required
                   type="email"
                 />
-                <SubscribeNewsletterButton />
+                <SubscribeNewsletterButton isSubmitting={isSubmitting} />
               </form>
+
+              {notice && (
+                <p
+                  aria-live="polite"
+                  className={
+                    notice.kind === "error"
+                      ? "text-sm text-red-600"
+                      : "text-sm text-green-700"
+                  }
+                  role={notice.kind === "error" ? "alert" : "status"}
+                >
+                  {notice.text}
+                </p>
+              )}
+
               {helperText && (
                 <RichText
                   className="text-muted-foreground text-sm leading-5 [&_a]:rounded-none [&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:decoration-solid"
@@ -172,6 +240,7 @@ export function SubscribeNewsletter({
               )}
             </div>
           </div>
+
           {hasTestimonialContent && testimonial && (
             <TestimonialPanel testimonial={testimonial} />
           )}
