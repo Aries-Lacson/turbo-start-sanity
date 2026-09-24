@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/use-debounce";
 import type { Blog } from "@/types";
@@ -7,16 +7,23 @@ import type { Blog } from "@/types";
 const SEARCH_DEBOUNCE_MS = 400;
 const CACHE_STALE_TIME_MS = 30_000;
 
+type SearchResponse = {
+  results: Blog[];
+  page: number;
+  totalPages: number;
+  totalHits: number;
+};
+
 async function searchBlog(
   query: string,
   category: string,
+  page: number,
   signal: AbortSignal
-) {
-  if (!query.trim()) {
-    return [];
-  }
-
-  const params = new URLSearchParams({ q: query });
+): Promise<SearchResponse> {
+  const params = new URLSearchParams({
+    q: query,
+    page: String(page),
+  });
 
   if (category) {
     params.set("category", category);
@@ -28,18 +35,28 @@ async function searchBlog(
     throw new Error("Failed to search");
   }
 
-  return response.json() as Promise<Blog[]>;
+  return response.json() as Promise<SearchResponse>;
 }
 
 export function useBlogSearch(category: string) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, updateSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
   const debouncedQuery = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
+
+  useEffect(() => {
+    setPage(1);
+  }, [category]);
+
+  function setSearchQuery(query: string) {
+    updateSearchQuery(query);
+    setPage(1);
+  }
 
   const hasQuery = debouncedQuery.trim().length > 0;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["blog-search", debouncedQuery, category],
-    queryFn: ({ signal }) => searchBlog(debouncedQuery, category, signal),
+    queryKey: ["blog-search", debouncedQuery, category, page],
+    queryFn: ({ signal }) => searchBlog(debouncedQuery, category, page, signal),
     enabled: hasQuery,
     staleTime: CACHE_STALE_TIME_MS,
   });
@@ -47,9 +64,13 @@ export function useBlogSearch(category: string) {
   return {
     searchQuery,
     setSearchQuery,
-    results: data ?? [],
+    results: data?.results ?? [],
     isSearching: isLoading,
     error,
     hasQuery,
+    page,
+    setPage,
+    totalPages: data?.totalPages ?? 0,
+    totalHits: data?.totalHits ?? 0,
   };
 }

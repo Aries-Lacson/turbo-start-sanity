@@ -75,7 +75,7 @@ export async function GET(request: Request) {
         ALGOLIA_APPLICATION_ID,
         ALGOLIA_SEARCH_API_KEY
       );
-      const { hits } = await algolia.searchSingleIndex({
+      const { hits, nbPages, nbHits } = await algolia.searchSingleIndex({
         indexName: ALGOLIA_INDEX_NAME,
         searchParams: {
           query,
@@ -85,7 +85,12 @@ export async function GET(request: Request) {
         },
       });
 
-      return NextResponse.json(hits);
+      return NextResponse.json({
+        results: hits,
+        page: Number(pageParam),
+        totalPages: nbPages,
+        totalHits: nbHits,
+      });
     } catch (error) {
       console.error("Blog search failed", error);
       return NextResponse.json(
@@ -105,7 +110,13 @@ export async function GET(request: Request) {
     threshold: 0.3,
   });
 
-  return NextResponse.json(
-    fuse.search(query, { limit: 10 }).map((result) => result.item)
-  );
+  const results = fuse.search(query).map((result) => result.item);
+  const page = Number(pageParam);
+
+  return NextResponse.json({
+    results: results.slice((page - 1) * 10, page * 10),
+    page,
+    totalPages: Math.ceil(results.length / 10),
+    totalHits: results.length,
+  });
 }

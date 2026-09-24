@@ -27,7 +27,7 @@ export function BlogSearchLayout({
     setSearchCategory(activeCategory);
   }, [activeCategory]);
 
-  const { searchQuery, setSearchQuery, results, isSearching, hasQuery, error } =
+  const { searchQuery, setSearchQuery, results, isSearching, hasQuery, error, page, setPage, totalPages, totalHits } =
     useBlogSearch(searchCategory);
 
   function clearSearch() {
@@ -51,8 +51,8 @@ export function BlogSearchLayout({
     if (results.length === 0) {
       return `No articles found for ${searchQuery}`;
     }
-    const plural = results.length === 1 ? "" : "s";
-    return `${results.length} article${plural} found for ${searchQuery}`;
+    const plural = totalHits === 1 ? "" : "s";
+    return `${totalHits} article${plural} found for ${searchQuery}, page ${page} of ${totalPages}`;
   })();
 
   return (
@@ -118,6 +118,10 @@ export function BlogSearchLayout({
               onClear={clearSearch}
               results={results}
               searchQuery={searchQuery}
+              page={page}
+              totalPages={totalPages}
+              totalHits={totalHits}
+              onPageChange={setPage}
             />
           ) : (
             list

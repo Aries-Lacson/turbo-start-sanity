@@ -14,6 +14,10 @@ type BlogSearchResultsProps = Readonly<{
   searchQuery: string;
   error?: Error | null;
   onClear?: () => void;
+  page: number;
+  totalPages: number;
+  totalHits: number;
+  onPageChange: (page: number) => void;
 }>;
 
 function Term({ children }: Readonly<{ children: string }>) {
@@ -104,6 +108,10 @@ export function BlogSearchResults({
   searchQuery,
   error,
   onClear,
+  page,
+  totalPages,
+  totalHits,
+  onPageChange
 }: BlogSearchResultsProps) {
   if (!hasQuery) {
     return null;
@@ -132,9 +140,35 @@ export function BlogSearchResults({
   }
 
   return (
-    <section className={cn("mt-8 grid gap-6", className)}>
-      <SearchResultsHeader count={results.length} query={searchQuery} />
-      <BlogList blogs={results} />
-    </section>
-  );
+  <section className={cn("mt-8 grid gap-6", className)}>
+    <SearchResultsHeader count={totalHits} query={searchQuery} />
+    <BlogList blogs={results} />
+
+    {totalPages > 1 ? (
+      <nav aria-label="Search result pages" className="flex items-center gap-3">
+        <button
+          className={ACTION_CLASS}
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          type="button"
+        >
+          Previous
+        </button>
+
+        <span className="text-muted-foreground text-sm tabular-nums">
+          Page {page} of {totalPages}
+        </span>
+
+        <button
+          className={ACTION_CLASS}
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          type="button"
+        >
+          Next
+        </button>
+      </nav>
+    ) : null}
+  </section>
+);
 }
