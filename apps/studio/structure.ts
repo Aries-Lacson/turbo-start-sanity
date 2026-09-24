@@ -18,6 +18,10 @@ import type {
   StructureResolverContext,
 } from "sanity/structure";
 
+import type { DefaultDocumentNodeResolver } from "sanity/structure";
+
+import { SeoIndexView } from "@/components/seo-index-view";
+
 import { createSlugBasedStructure } from "@/components/nested-pages-structure";
 import type { SchemaType, SingletonType } from "@/schemaTypes/index";
 import { getTitleCase } from "@/utils/helper";
@@ -94,6 +98,20 @@ const createIndexListWithOrderableItems = ({
           }),
         ])
     );
+};
+
+export const defaultDocumentNode: DefaultDocumentNodeResolver = (
+  S,
+  { schemaType }
+) => {
+  if (schemaType === "blog") {
+    return S.document().views([
+      S.view.form().title("Editor"),
+      S.view.component(SeoIndexView).title("SEO & Index"),
+    ]);
+  }
+
+  return S.document();
 };
 
 export const structure = (
